@@ -51,6 +51,7 @@ enum Token {
 	Tfunc,
 	Ttype,
 	Tdata,
+	Tcommon,
 	Tsection,
 	Talign,
 	Tdbgfile,
@@ -109,6 +110,7 @@ static char *kwmap[Ntok] = {
 	[Tfunc] = "function",
 	[Ttype] = "type",
 	[Tdata] = "data",
+	[Tcommon] = "common",
 	[Tsection] = "section",
 	[Talign] = "align",
 	[Tdbgfile] = "dbgfile",
@@ -132,7 +134,7 @@ enum {
 	TMask = 16383, /* for temps hash */
 	BMask = 8191, /* for blocks hash */
 
-	K = 9583425, /* found using tools/lexh.c */
+	K = 11183273, /* found using tools/lexh.c */
 	M = 23,
 };
 
@@ -1072,7 +1074,7 @@ static void
 parsedat(void cb(Dat *), Lnk *lnk)
 {
 	char name[NString] = {0};
-	int t;
+	int t, n;
 	Dat d;
 
 	if (nextnl() != Tglo || nextnl() != Teq)
@@ -1093,7 +1095,9 @@ parsedat(void cb(Dat *), Lnk *lnk)
 
 	if (t != Tlbrace)
 		err("expected data contents in { .. }");
-	for (;;) {
+	for (n = 0;; n++) {
+		if (lnk->common && n > 0)
+			err("common can be used only with one z");
 		switch (nextnl()) {
 		default: err("invalid size specifier %c in data", tokval.chr);
 		case Trbrace: goto Done;
@@ -1105,6 +1109,8 @@ parsedat(void cb(Dat *), Lnk *lnk)
 		case Td: d.type = DL; break;
 		case Tz: d.type = DZ; break;
 		}
+		if (lnk->common && d.type != DZ)
+			err("common can be used only with z");
 		t = nextnl();
 		do {
 			d.isstr = 0;
@@ -1148,6 +1154,9 @@ parselnk(Lnk *lnk)
 		case Tthread:
 			lnk->thread = 1;
 			break;
+		case Tcommon:
+			lnk->common = 1;
+			break;
 		case Tsection:
 			if (lnk->sec)
 				err("only one section allowed");
@@ -1164,6 +1173,10 @@ parselnk(Lnk *lnk)
 				err("only data may have thread linkage");
 			if (haslnk && t != Tdata && t != Tfunc)
 				err("only data and function have linkage");
+			if (lnk->common && lnk->sec)
+				err("common symbols cannot have section declarations");
+			if (lnk->common && t != Tdata)
+				err("common symbols only can be used for data");
 			return t;
 		}
 }

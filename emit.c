@@ -72,7 +72,7 @@ emitdat(Dat *d, FILE *f)
 
 	switch (d->type) {
 	case DStart:
-		zero = 0;
+		zero = d->lnk->common ? -1 : 0;
 		break;
 	case DEnd:
 		if (zero != -1) {
@@ -83,6 +83,8 @@ emitdat(Dat *d, FILE *f)
 	case DZ:
 		if (zero != -1)
 			zero += d->u.num;
+		else if (d->lnk->common)
+			fprintf(f, "\t.comm %s,%"PRId64"\n", d->name, d->u.num);
 		else
 			fprintf(f, "\t.fill %"PRId64",1,0\n", d->u.num);
 		break;

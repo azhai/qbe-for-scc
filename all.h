@@ -365,6 +365,7 @@ struct Lnk {
 	char export;
 	char thread;
 	char align;
+	char common;
 	char *sec;
 	char *secf;
 };
